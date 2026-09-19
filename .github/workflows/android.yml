@@ -1,0 +1,133 @@
+name: Android APK
+
+on:
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 12266719
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          # setup-android defaults to the obsolete "tools" package.
+          # Keep this empty and install only real SDK packages below.
+          packages: ''
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Download Godot and export templates
+        shell: bash
+        env:
+          GODOT_VERSIONS: "4.7.2 4.5.1 4.4.1"
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/godot" "$HOME/.local/share/godot/export_templates"
+          BASE="https://github.com/godotengine/godot/releases/download"
+          PICKED=""
+          for V in $GODOT_VERSIONS; do
+            echo "Trying Godot $V ..."
+            if curl -L --fail --retry 3 -o /tmp/godot.zip \
+                "$BASE/$V-stable/Godot_v$V-stable_linux.x86_64.zip"; then
+              PICKED="$V"
+              break
+            fi
+          done
+          if [ -z "$PICKED" ]; then
+            echo "Could not download any Godot build" >&2
+            exit 1
+          fi
+          echo "Using Godot $PICKED"
+          echo "GODOT_VERSION=$PICKED" >> "$GITHUB_ENV"
+
+          unzip -q /tmp/godot.zip -d "$HOME/godot"
+          mv "$HOME/godot/Godot_v$PICKED-stable_linux.x86_64" "$HOME/godot/godot"
+          chmod +x "$HOME/godot/godot"
+
+          curl -L --fail --retry 4 -o /tmp/templates.tpz \
+            "$BASE/$PICKED-stable/Godot_v$PICKED-stable_export_templates.tpz"
+          unzip -q /tmp/templates.tpz -d /tmp/godot_templates
+          mkdir -p "$HOME/.local/share/godot/export_templates/$PICKED.stable"
+          cp -a /tmp/godot_templates/templates/* \
+            "$HOME/.local/share/godot/export_templates/$PICKED.stable/"
+          "$HOME/godot/godot" --headless --version
+
+      - name: Configure Android SDK environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+
+      - name: Generate debug keystore
+        run: |
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/debug.keystore" \
+            -storepass android -keypass android \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Import assets and validate project
+        shell: bash
+        run: |
+          set -euo pipefail
+          # First pass imports the GLB/WAV assets, second pass opens the project
+          # headlessly which reports any scene or GDScript parse error.
+          "$HOME/godot/godot" --headless --path . --import || true
+          "$HOME/godot/godot" --headless --path . --editor --quit
+
+      - name: Check GDScript files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in scripts/*.gd; do
+            echo "checking $f"
+            "$HOME/godot/godot" --headless --path . --check-only --script "$f"
+          done
+
+      - name: Verify Android export texture settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -n 'import_etc2_astc=true' project.godot
+          test -f export_presets.cfg
+
+      - name: Export APK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          set -euo pipefail
+          "$HOME/godot/godot" --headless --path . --export-debug "Android" \
+            "$GITHUB_WORKSPACE/bodycam-duel-debug.apk"
+          test -s "$GITHUB_WORKSPACE/bodycam-duel-debug.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bodycam-duel-debug-apk
+          path: bodycam-duel-debug.apk
+          if-no-files-found: error

@@ -1,0 +1,65 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/camera_effects.gd" id="2_fx"]
+[ext_resource type="PackedScene" path="res://scenes/weapon.tscn" id="3_weapon"]
+[ext_resource type="PackedScene" path="res://models/player/a_lowpoly.glb" id="4_character"]
+[ext_resource type="Script" path="res://scripts/rig_animation.gd" id="5_rig"]
+[ext_resource type="PackedScene" path="res://models/gun/PBR_Pistol.glb" id="6_remote_pistol"]
+[ext_resource type="PackedScene" path="res://models/gun/M4A1.glb" id="7_remote_m4"]
+
+[sub_resource type="CapsuleShape3D" id="Capsule_player"]
+radius = 0.34
+height = 1.75
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 3
+floor_max_angle = 0.9
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.875, 0)
+shape = SubResource("Capsule_player")
+
+[node name="CharacterVisual" type="Node3D" parent="."]
+script = ExtResource("5_rig")
+
+[node name="Character" parent="CharacterVisual" instance=ExtResource("4_character")]
+
+[node name="RemotePistol" parent="CharacterVisual" instance=ExtResource("6_remote_pistol")]
+scale = Vector3(0.115, 0.115, 0.115)
+rotation = Vector3(0, -1.5708, 0)
+position = Vector3(0.34, 1.18, -0.42)
+
+[node name="RemoteM4A1" parent="CharacterVisual" instance=ExtResource("7_remote_m4")]
+visible = false
+scale = Vector3(0.043, 0.043, 0.043)
+rotation = Vector3(0, 0, 0)
+position = Vector3(0.34, 1.18, -0.42)
+
+[node name="Head" type="Node3D" parent="."]
+position = Vector3(0, 1.58, 0)
+
+[node name="Camera3D" type="Camera3D" parent="Head"]
+fov = 96.0
+near = 0.05
+far = 60.0
+
+[node name="CameraEffects" type="Node" parent="Head/Camera3D"]
+script = ExtResource("2_fx")
+
+[node name="WeaponHolder" type="Node3D" parent="Head/Camera3D"]
+position = Vector3(0.13, -0.16, -0.24)
+
+[node name="Weapon" parent="Head/Camera3D/WeaponHolder" instance=ExtResource("3_weapon")]
+
+[node name="StepPlayer" type="AudioStreamPlayer3D" parent="."]
+position = Vector3(0, 0.2, 0)
+unit_size = 3.0
+volume_db = -6.0
+
+[node name="VoicePlayer" type="AudioStreamPlayer3D" parent="."]
+position = Vector3(0, 1.5, 0)
+unit_size = 3.0
+volume_db = -3.0

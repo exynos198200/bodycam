@@ -1,0 +1,105 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapon.gd" id="1_weapon"]
+[ext_resource type="PackedScene" path="res://models/gun/PBR_Pistol.glb" id="2_pistol"]
+[ext_resource type="PackedScene" path="res://models/gun/M4A1.glb" id="3_m4"]
+
+[sub_resource type="StandardMaterial3D" id="ArmSkin"]
+albedo_color = Color(0.62, 0.42, 0.31, 1)
+roughness = 0.85
+
+[sub_resource type="CylinderMesh" id="ForearmMesh"]
+top_radius = 0.038
+bottom_radius = 0.052
+height = 0.26
+radial_segments = 10
+
+[sub_resource type="BoxMesh" id="HandMesh"]
+size = Vector3(0.088, 0.036, 0.11)
+
+[sub_resource type="CylinderMesh" id="ThumbMesh"]
+top_radius = 0.013
+bottom_radius = 0.016
+height = 0.055
+radial_segments = 6
+
+[node name="Weapon" type="Node3D"]
+script = ExtResource("1_weapon")
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="Pistol" parent="Model" instance=ExtResource("2_pistol")]
+visible = false
+scale = Vector3(0.115, 0.115, 0.115)
+rotation = Vector3(0, -1.5708, 0)
+position = Vector3(0.06, -0.04, -0.18)
+
+[node name="M4A1" parent="Model" instance=ExtResource("3_m4")]
+visible = false
+scale = Vector3(0.043, 0.043, 0.043)
+rotation = Vector3(0, 0, 0)
+position = Vector3(0.0, 0.025, -0.05)
+
+[node name="Muzzle" type="Node3D" parent="."]
+position = Vector3(0, 0.085, -0.3)
+
+[node name="FlashLight" type="OmniLight3D" parent="Muzzle"]
+visible = false
+light_color = Color(1, 0.827451, 0.552941, 1)
+light_energy = 6.0
+shadow_enabled = false
+omni_range = 7.0
+
+[node name="FlashMesh" type="MeshInstance3D" parent="Muzzle"]
+visible = false
+cast_shadow = 0
+
+[node name="FPArms" type="Node3D" parent="."]
+position = Vector3(0.0, -0.06, 0.0)
+
+[node name="ForearmR" type="MeshInstance3D" parent="FPArms"]
+position = Vector3(0.12, -0.13, -0.08)
+rotation = Vector3(0.22, 0.0, 0.18)
+mesh = SubResource("ForearmMesh")
+material_override = SubResource("ArmSkin")
+cast_shadow = 0
+
+[node name="HandR" type="MeshInstance3D" parent="FPArms"]
+position = Vector3(0.09, 0.0, -0.22)
+rotation = Vector3(0.08, 0.0, 0.12)
+mesh = SubResource("HandMesh")
+material_override = SubResource("ArmSkin")
+cast_shadow = 0
+
+[node name="ThumbR" type="MeshInstance3D" parent="FPArms"]
+position = Vector3(0.045, 0.025, -0.2)
+rotation = Vector3(0.3, 0.0, -0.55)
+mesh = SubResource("ThumbMesh")
+material_override = SubResource("ArmSkin")
+cast_shadow = 0
+
+[node name="ForearmL" type="MeshInstance3D" parent="FPArms"]
+position = Vector3(-0.06, -0.16, -0.14)
+rotation = Vector3(0.3, 0.0, -0.25)
+mesh = SubResource("ForearmMesh")
+material_override = SubResource("ArmSkin")
+cast_shadow = 0
+
+[node name="HandL" type="MeshInstance3D" parent="FPArms"]
+position = Vector3(-0.04, -0.02, -0.26)
+rotation = Vector3(0.1, 0.05, -0.15)
+mesh = SubResource("HandMesh")
+material_override = SubResource("ArmSkin")
+cast_shadow = 0
+
+[node name="ShotPlayer" type="AudioStreamPlayer3D" parent="."]
+unit_size = 8.0
+max_db = 0.0
+
+[node name="ReloadPlayer" type="AudioStreamPlayer3D" parent="."]
+unit_size = 4.0
+volume_db = -4.0
+
+[node name="DryPlayer" type="AudioStreamPlayer3D" parent="."]
+unit_size = 3.0
+volume_db = -6.0
